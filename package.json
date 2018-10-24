@@ -1,0 +1,16 @@
+{
+  "name": "myfabricexample",
+  "version": "1.0.0",
+  "description": "Test Fabric",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "fabric-ca-client": "unstable",
+    "fabric-client": "^1.2.1",
+    "grpc": "^1.6.0"
+    },
+  "author": "sunwei",
+  "license": "ISC"
+}

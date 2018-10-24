@@ -1,0 +1,4 @@
+# installed platform-specific binaries
+bin/
+node_modules/
+.vscode/
