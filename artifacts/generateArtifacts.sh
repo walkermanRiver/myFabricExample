@@ -1,3 +1,122 @@
+
+
+export FABRIC_CFG_PATH=$PWD
+
+echo
+
+
+
+function generateCerts() {
+  which cryptogen
+  if [ "$?" -ne 0 ]; then
+    echo "cryptogen tool not found. exiting"
+    exit 1
+  fi
+  echo
+  echo "##########################################################"
+  echo "##### Generate certificates using cryptogen tool #########"
+  echo "##########################################################"
+
+  if [ -d "crypto-config" ]; then
+    rm -Rf crypto-config
+  fi
+  set -x
+  cryptogen generate --config=./crypto-config.yaml
+  res=$?
+  set +x
+  if [ $res -ne 0 ]; then
+    echo "Failed to generate certificates..."
+    exit 1
+  fi
+  echo
+}
+
+function generateChannelArtifacts() {
+  which configtxgen
+  if [ "$?" -ne 0 ]; then
+    echo "configtxgen tool not found. exiting"
+    exit 1
+  fi
+
+  echo "##########################################################"
+  echo "#########  Generating Orderer Genesis block ##############"
+  echo "##########################################################"
+  # Note: For some unknown reason (at least for now) the block file can't be
+  # named orderer.genesis.block or the orderer will fail to launch!
+  set -x
+  configtxgen -profile TwoOrgsOrdererGenesis -outputBlock ./channel/genesis.block
+  res=$?
+  set +x
+  if [ $res -ne 0 ]; then
+    echo "Failed to generate orderer genesis block..."
+    exit 1
+  fi
+  echo
+  echo "#################################################################"
+  echo "### Generating channel configuration transaction 'channel.tx' ###"
+  echo "#################################################################"
+  set -x
+  configtxgen -profile TwoOrgsChannel -outputCreateChannelTx ./channel/channel.tx -channelID $CHANNEL_NAME
+  res=$?
+  set +x
+  if [ $res -ne 0 ]; then
+    echo "Failed to generate channel configuration transaction..."
+    exit 1
+  fi
+
+  echo
+  echo "#################################################################"
+  echo "#######    Generating anchor peer update for Org1MSP   ##########"
+  echo "#################################################################"
+  set -x
+  configtxgen -profile TwoOrgsChannel -outputAnchorPeersUpdate ./channel/Org1MSPanchors.tx -channelID $CHANNEL_NAME -asOrg Org1MSP
+  res=$?
+  set +x
+  if [ $res -ne 0 ]; then
+    echo "Failed to generate anchor peer update for Org1MSP..."
+    exit 1
+  fi
+
+  echo
+  echo "#################################################################"
+  echo "#######    Generating anchor peer update for Org2MSP   ##########"
+  echo "#################################################################"
+  set -x
+  configtxgen -profile TwoOrgsChannel -outputAnchorPeersUpdate \
+    ./channel/Org2MSPanchors.tx -channelID $CHANNEL_NAME -asOrg Org2MSP
+  res=$?
+  set +x
+  if [ $res -ne 0 ]; then
+    echo "Failed to generate anchor peer update for Org2MSP..."
+    exit 1
+  fi
+  echo
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #!/bin/bash +x
 #
 # Copyright IBM Corp. All Rights Reserved.
@@ -13,7 +132,7 @@ CHANNEL_NAME=$1
 echo $CHANNEL_NAME
 
 export FABRIC_ROOT=$PWD/../..
-export FABRIC_CFG_PATH=$PWD
+
 echo
 
 OS_ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')" | awk '{print tolower($0)}')
@@ -40,24 +159,7 @@ function replacePrivateKey () {
         sed $OPTS "s/CA2_PRIVATE_KEY/${PRIV_KEY}/g" docker-compose-e2e.yaml
 }
 
-## Generates Org certs using cryptogen tool
-function generateCerts (){
-	CRYPTOGEN=$FABRIC_ROOT/release/$OS_ARCH/bin/cryptogen
 
-	if [ -f "$CRYPTOGEN" ]; then
-            echo "Using cryptogen -> $CRYPTOGEN"
-	else
-	    echo "Building cryptogen"
-	    make -C $FABRIC_ROOT release
-	fi
-
-	echo
-	echo "##########################################################"
-	echo "##### Generate certificates using cryptogen tool #########"
-	echo "##########################################################"
-	$CRYPTOGEN generate --config=./crypto-config.yaml
-	echo
-}
 
 function generateIdemixMaterial (){
 	IDEMIXGEN=$FABRIC_ROOT/release/$OS_ARCH/bin/idemixgen
@@ -88,43 +190,7 @@ function generateIdemixMaterial (){
 	cd $CURDIR
 }
 
-## Generate orderer genesis block , channel configuration transaction and anchor peer update transactions
-function generateChannelArtifacts() {
 
-	CONFIGTXGEN=$FABRIC_ROOT/release/$OS_ARCH/bin/configtxgen
-	if [ -f "$CONFIGTXGEN" ]; then
-            echo "Using configtxgen -> $CONFIGTXGEN"
-	else
-	    echo "Building configtxgen"
-	    make -C $FABRIC_ROOT release
-	fi
-
-	echo "##########################################################"
-	echo "#########  Generating Orderer Genesis block ##############"
-	echo "##########################################################"
-	# Note: For some unknown reason (at least for now) the block file can't be
-	# named orderer.genesis.block or the orderer will fail to launch!
-	$CONFIGTXGEN -profile TwoOrgsOrdererGenesis -channelID e2e-orderer-syschan -outputBlock ./channel-artifacts/genesis.block
-
-	echo
-	echo "#################################################################"
-	echo "### Generating channel configuration transaction 'channel.tx' ###"
-	echo "#################################################################"
-	$CONFIGTXGEN -profile TwoOrgsChannel -outputCreateChannelTx ./channel-artifacts/channel.tx -channelID $CHANNEL_NAME
-
-	echo
-	echo "#################################################################"
-	echo "#######    Generating anchor peer update for Org1MSP   ##########"
-	echo "#################################################################"
-	$CONFIGTXGEN -profile TwoOrgsChannel -outputAnchorPeersUpdate ./channel-artifacts/Org1MSPanchors.tx -channelID $CHANNEL_NAME -asOrg Org1MSP
-
-	echo
-	echo "#################################################################"
-	echo "#######    Generating anchor peer update for Org2MSP   ##########"
-	echo "#################################################################"
-	$CONFIGTXGEN -profile TwoOrgsChannel -outputAnchorPeersUpdate ./channel-artifacts/Org2MSPanchors.tx -channelID $CHANNEL_NAME -asOrg Org2MSP
-	echo
-}
 
 generateCerts
 generateIdemixMaterial

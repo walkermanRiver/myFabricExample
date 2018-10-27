@@ -6,3 +6,5 @@ curl -sSL https://raw.githubusercontent.com/hyperledger/fabric/master/scripts/bo
 
 ./bootstrap.sh 1.2.0 1.2.0 0.4.8 -s
 
+Check the fabric binaries path with: which cryptogen
+Usually you should put the binaries in the path: /bin, ~/bin/, /usr/bin/
