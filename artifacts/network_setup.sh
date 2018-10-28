@@ -17,6 +17,14 @@ COMPOSE_FILE=docker-compose-cli.yaml
 COMPOSE_FILE_COUCH=docker-compose-couch.yaml
 #COMPOSE_FILE=docker-compose-e2e.yaml
 
+CLI_TIMEOUT=10
+# default for delay between commands
+CLI_DELAY=3
+# use golang as the default language for chaincode
+LANGUAGE=golang
+# default image tag
+IMAGETAG="latest"
+
 function printHelp () {
 	echo "Usage: ./network_setup <up|down> <\$channel-name> <\$cli_timeout> <couchdb>.\nThe arguments must be in order."
 }
@@ -83,6 +91,15 @@ function networkDown () {
 
     # remove orderer block and other channel configuration transactions and certs
     rm -rf channel-artifacts/*.block channel-artifacts/*.tx crypto-config
+}
+
+function buildChannelAritifacts(){
+  # now run the end to end script
+  docker exec cli scripts/script.sh $CHANNEL_NAME $CLI_DELAY $LANGUAGE $CLI_TIMEOUT $VERBOSE
+  if [ $? -ne 0 ]; then
+    echo "ERROR !!!! Test failed"
+    exit 1
+  fi
 }
 
 validateArgs
